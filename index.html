@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Rose Day - Interactive 3D</title>
+    <style>
+        /* Mobile-first, responsive design */
+        body { margin: 0; overflow: hidden; background-color: #2b0c13; font-family: 'Dancing Script', cursive, 'Arial', sans-serif; }
+        canvas { display: block; outline: none; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:wght@400;700&display=swap');
+
+        /* UI Overlay */
+        #ui-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            padding: 20px; /* Add padding for mobile edges */
+            box-sizing: border-box;
+        }
+
+        .ui-element {
+            pointer-events: auto;
+            transition: opacity 0.8s, transform 0.8s;
+            text-align: center;
+            width: 100%;
+            max-width: 500px; /* Ensure content doesn't get too wide on large screens */
+        }
+
+        /* Titles - Responsive sizes */
+        h1 {
+            color: #ff4d6d;
+            text-shadow: 0 0 15px #ff0033;
+            font-size: clamp(2.5rem, 8vw, 5rem); /* Smaller minimum for mobile */
+            margin-bottom: 10px;
+            font-family: 'Dancing Script', cursive;
+        }
+
+        p.subtitle {
+            color: #ffccd5;
+            font-size: clamp(1rem, 4vw, 1.5rem); /* Responsive subtitle */
+            margin-bottom: 30px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* Buttons - Responsive padding and size */
+        button {
+            background: linear-gradient(135deg, #d90429, #8d99ae);
+            border: 2px solid #fff0f3;
+            border-radius: 50px;
+            padding: clamp(12px, 3vw, 15px) clamp(30px, 8vw, 45px);
+            color: #fff;
+            font-size: clamp(1rem, 3.5vw, 1.3rem);
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(217, 4, 41, 0.4);
+            transition: all 0.3s ease;
+            font-family: 'Playfair Display', serif;
+            letter-spacing: 1px;
+            outline: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent; /* Remove mobile tap highlight */
+        }
+
+        button:active { transform: scale(0.95); }
+        button:hover { 
+            box-shadow: 0 0 30px rgba(217, 4, 41, 0.8); 
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, #ef233c, #2b2d42);
+        }
+
+        .share-btn {
+            background: linear-gradient(135deg, #25a18e, #0e402d);
+            margin-top: 20px;
+            border: none;
+            width: auto; /* Allow it to size to content */
+        }
+
+        /* Card - Responsive sizing */
+        #card-content {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            padding: clamp(25px, 6vw, 40px);
+            border-radius: 20px;
+            width: 90%; /* Take up most of the mobile screen */
+            max-width: 450px; /* But don't get too big on desktop */
+            text-align: center;
+            color: #590d22;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            opacity: 0;
+            transform: translateY(20px) scale(0.9);
+            border: 2px solid #ff4d6d;
+            margin: 0 auto; /* Center horizontally */
+        }
+
+        #card-content h2 {
+            color: #d90429;
+            margin: 0 0 15px 0;
+            font-family: 'Dancing Script', cursive;
+            font-size: clamp(2rem, 6vw, 2.8rem);
+        }
+
+        #card-content p { 
+            font-size: clamp(1rem, 4vw, 1.25rem);
+            line-height: 1.5; 
+            font-family: 'Playfair Display', serif;
+        }
+
+        .hidden { 
+            opacity: 0 !important; 
+            pointer-events: none !important; 
+            display: none !important; /* Helps with layout flow */
+        }
+
+        /* Loading Screen - Minimal, just covers init */
+        #loading {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #2b0c13;
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #ff4d6d;
+            font-family: 'Dancing Script', cursive;
+            font-size: 2rem;
+            transition: opacity 0.5s;
+        }
+        
+    </style>
+</head>
+<body>
+
+    <!-- Background Music -->
+    <audio id="bg-music" src="https://assets.mixkit.co/music/preview/mixkit-romantic-piano-136.mp3" loop></audio>
+
+    <!-- Loading Screen -->
+    <div id="loading">Planting Seeds...</div>
+
+    <div id="ui-container">
+        <!-- Step 1: Welcome -->
+        <div id="step-1" class="ui-element" style="display: none;"> <!-- Hidden initially until loaded -->
+            <h1>Happy Rose Day</h1>
+            <p class="subtitle">A special bloom, just for you.</p>
+            <button onclick="startExperience()">Accept Rose 🌹</button>
+        </div>
+
+        <!-- Step 2: Water/Grow -->
+        <div id="step-2" class="ui-element hidden">
+            <button onclick="growRose()">Water the Rose 💧</button>
+        </div>
+
+        <!-- Step 3: Magic/Scent -->
+        <div id="step-3" class="ui-element hidden">
+            <button onclick="addMagic()">Add Some Magic ✨</button>
+        </div>
+
+        <!-- Step 4: Reveal Message -->
+        <div id="step-4" class="ui-element hidden">
+            <button onclick="revealMessage()">Read Message 💌</button>
+        </div>
+
+        <!-- Step 5: Card & Share -->
+        <div id="final-screen" class="ui-element hidden">
+            <div id="card-content">
+                <h2>My Dearest,</h2>
+                <p>
+                    Like a rose, you bring beauty and fragrance into my life. 
+                    May your day be as lovely and special as you are.
+                </p>
+                <p style="font-weight: bold; margin-top: 20px; font-size: 1.3rem;">Happy Rose Day! 🌹❤️</p>
+            </div>
+            <button class="share-btn" onclick="shareExperience()">Send this Rose 📤</button>
+        </div>
+    </div>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Removed external GLTFLoader to prevent errors -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+
+    <script>
+        // --- 1. SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x2b0c13);
+        scene.fog = new THREE.FogExp2(0x2b0c13, 0.04); 
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // Initial camera position optimized for mobile portrait/landscape
+        function setInitialCamera() {
+            if(window.innerWidth < window.innerHeight) {
+                // Portrait
+                camera.position.set(0, 4, 11);
+            } else {
+                // Landscape
+                camera.position.set(0, 3, 9);
+            }
+            camera.lookAt(0, 1.5, 0);
+        }
+        setInitialCamera();
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting 
+        const ambientLight = new THREE.AmbientLight(0xffb7b2, 0.4);
+        scene.add(ambientLight);
+
+        // Main key light
+        const spotLight = new THREE.SpotLight(0xffe0e0, 1.2);
+        spotLight.position.set(5, 12, 5);
+        spotLight.angle = Math.PI / 6;
+        spotLight.penumbra = 0.5;
+        spotLight.castShadow = true;
+        spotLight.shadow.mapSize.width = 1024;
+        spotLight.shadow.mapSize.height = 1024;
+        scene.add(spotLight);
+
+        const backLight = new THREE.PointLight(0xff5a6e, 1.0, 20);
+        backLight.position.set(-4, 5, -5);
+        scene.add(backLight);
+        
+        // Floor (Reflection)
+        const floorGeo = new THREE.PlaneGeometry(50, 50);
+        const floorMat = new THREE.MeshStandardMaterial({ 
+            color: 0x1a0509, 
+            roughness: 0.3, 
+            metalness: 0.2,
+        });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -1.5;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // --- 2. PROCEDURAL REALISTIC ROSE ---
+        const roseModel = new THREE.Group();
+        scene.add(roseModel);
+        roseModel.visible = false;
+        
+        // Arrays to hold parts for animation
+        const petalLayers = []; 
+        let flowerHeadGroup;
+
+        function createProceduralRose() {
+            // A. The Stem (Curved Tube)
+            class CustomSinCurve extends THREE.Curve {
+                constructor(scale = 1) {
+                    super();
+                    this.scale = scale;
+                }
+                getPoint(t, optionalTarget = new THREE.Vector3()) {
+                    const tx = Math.sin(t * Math.PI) * 0.5;
+                    const ty = t * 6;
+                    const tz = Math.cos(t * Math.PI) * 0.2;
+                    return optionalTarget.set(tx, ty, tz).multiplyScalar(this.scale);
+                }
+            }
+            const path = new CustomSinCurve(1);
+            const stemGeo = new THREE.TubeGeometry(path, 20, 0.08, 8, false);
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x1b4d3e, roughness: 0.8 });
+            const stem = new THREE.Mesh(stemGeo, stemMat);
+            stem.position.y = -1.5;
+            stem.castShadow = true;
+            roseModel.add(stem);
+
+            // B. Thorns
+            const thornGeo = new THREE.ConeGeometry(0.04, 0.15, 8);
+            for(let i=1; i<8; i++) {
+                const t = i/9;
+                const pos = path.getPoint(t);
+                const tangent = path.getTangent(t);
+                const thorn = new THREE.Mesh(thornGeo, stemMat);
+                thorn.position.set(pos.x, pos.y - 1.5, pos.z);
+                // Orient thorn outward
+                thorn.lookAt(pos.x + tangent.z, pos.y - 1.5, pos.z - tangent.x);
+                roseModel.add(thorn);
+            }
+
+            // C. Leaves
+            function createLeaf() {
+                const shape = new THREE.Shape();
+                shape.moveTo(0,0);
+                shape.bezierCurveTo(0.2, 0.1, 0.4, 0.6, 0, 1.2);
+                shape.bezierCurveTo(-0.4, 0.6, -0.2, 0.1, 0, 0);
+                const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.01, bevelEnabled: false });
+                const mat = new THREE.MeshStandardMaterial({ color: 0x2d6a4f, side: THREE.DoubleSide });
+                return new THREE.Mesh(geo, mat);
+            }
+
+            const leaf1 = createLeaf();
+            leaf1.position.set(0.1, 1.5, 0);
+            leaf1.rotation.set(0.5, 0, -0.5);
+            leaf1.scale.set(0.8, 0.8, 0.8);
+            roseModel.add(leaf1);
+
+            const leaf2 = createLeaf();
+            leaf2.position.set(-0.1, 2.5, 0.1);
+            leaf2.rotation.set(0.2, 3, 0.5);
+            leaf2.scale.set(0.7, 0.7, 0.7);
+            roseModel.add(leaf2);
+
+            // D. Flower Head
+            flowerHeadGroup = new THREE.Group();
+            // Position at end of stem (approx t=1 of curve)
+            const topPos = path.getPoint(1);
+            flowerHeadGroup.position.set(topPos.x, topPos.y - 1.5, topPos.z);
+            flowerHeadGroup.rotation.z = 0.2; // Slight tilt
+            roseModel.add(flowerHeadGroup);
+
+            // Petal Geometry
+            function createPetalShape() {
+                const shape = new THREE.Shape();
+                // A rounded rose petal shape
+                shape.moveTo(0, 0); 
+                shape.bezierCurveTo(0.6, 0.2, 0.5, 1.5, 0, 1.8);
+                shape.bezierCurveTo(-0.5, 1.5, -0.6, 0.2, 0, 0);
+                return shape;
+            }
+            const petalShape = createPetalShape();
+            const petalGeo = new THREE.ExtrudeGeometry(petalShape, { depth: 0.02, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.01, bevelSegments: 2 });
+            const petalMat = new THREE.MeshStandardMaterial({ 
+                color: 0x880011, // Deep red start
+                roughness: 0.5, 
+                metalness: 0.1, 
+                side: THREE.DoubleSide 
+            });
+
+            // Create Layers of Petals
+            // Layer 1: Bud (Tight cone)
+            const layer1Group = new THREE.Group();
+            for(let i=0; i<3; i++) {
+                const p = new THREE.Mesh(petalGeo, petalMat);
+                p.scale.set(0.5, 0.5, 0.5);
+                p.rotation.x = 0.2; // vertical
+                // Spin around center
+                const angle = (i/3) * Math.PI * 2;
+                // Use a wrapper to pivot from bottom
+                const wrapper = new THREE.Group();
+                wrapper.rotation.y = angle;
+                p.position.y = 0.1;
+                p.rotation.x = 0.3; // Curl in
+                wrapper.add(p);
+                layer1Group.add(wrapper);
+            }
+            flowerHeadGroup.add(layer1Group);
+            petalLayers.push({ group: layer1Group, type: 'inner' });
+
+            // Layer 2: Mid
+            const layer2Group = new THREE.Group();
+            for(let i=0; i<5; i++) {
+                const p = new THREE.Mesh(petalGeo, petalMat);
+                p.scale.set(0.7, 0.7, 0.7);
+                const angle = (i/5) * Math.PI * 2;
+                const wrapper = new THREE.Group();
+                wrapper.rotation.y = angle + 0.5; // Offset
+                p.position.y = 0.1;
+                p.rotation.x = 0.1; // Slightly more open
+                wrapper.add(p);
+                // Store wrapper to animate opening
+                layer2Group.add(wrapper);
+                // We want to animate the individual petal inside the wrapper
+                petalLayers.push({ mesh: p, type: 'mid', delay: i*0.1 });
+            }
+            flowerHeadGroup.add(layer2Group);
+
+            // Layer 3: Outer
+            const layer3Group = new THREE.Group();
+            for(let i=0; i<7; i++) {
+                const p = new THREE.Mesh(petalGeo, petalMat);
+                p.scale.set(0.9, 0.9, 0.9);
+                const angle = (i/7) * Math.PI * 2;
+                const wrapper = new THREE.Group();
+                wrapper.rotation.y = angle;
+                p.position.y = 0.15;
+                p.rotation.x = 0.05; // Almost vertical initially
+                wrapper.add(p);
+                layer3Group.add(wrapper);
+                petalLayers.push({ mesh: p, type: 'outer', delay: i*0.1 });
+            }
+            flowerHeadGroup.add(layer3Group);
+            
+            // Sepals (Green bits under flower)
+            const sepalGeo = new THREE.ConeGeometry(0.1, 0.5, 3);
+            for(let i=0; i<5; i++) {
+                const s = new THREE.Mesh(sepalGeo, stemMat);
+                s.position.y = -0.1;
+                s.rotation.y = (i/5) * Math.PI * 2;
+                s.rotation.x = 2.5; // Point down/out
+                flowerHeadGroup.add(s);
+            }
+        }
+
+        createProceduralRose();
+
+        // Finish Loading
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('step-1').style.display = 'block';
+
+
+        // --- 3. PARTICLES (Hearts) ---
+        const heartsGroup = new THREE.Group();
+        scene.add(heartsGroup);
+
+        const heartShape = new THREE.Shape();
+        heartShape.moveTo(0.25, 0.25);
+        heartShape.bezierCurveTo(0.25, 0.25, 0.20, 0, 0, 0);
+        heartShape.bezierCurveTo(-0.30, 0, -0.30, 0.35, -0.30, 0.35);
+        heartShape.bezierCurveTo(-0.30, 0.55, -0.10, 0.77, 0.25, 0.95);
+        heartShape.bezierCurveTo(0.60, 0.77, 0.80, 0.55, 0.80, 0.35);
+        heartShape.bezierCurveTo(0.80, 0.35, 0.80, 0, 0.50, 0);
+        heartShape.bezierCurveTo(0.35, 0, 0.25, 0.25, 0.25, 0.25);
+        
+        const heartGeo = new THREE.ShapeGeometry(heartShape);
+        const heartMat = new THREE.MeshBasicMaterial({ color: 0xff006e, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+
+        const particles = [];
+        
+        function spawnHearts() {
+            for(let i=0; i<40; i++) {
+                const mesh = new THREE.Mesh(heartGeo, heartMat);
+                mesh.scale.set(0.15, 0.15, 0.15);
+                mesh.position.set(
+                    (Math.random() - 0.5) * 5,
+                    -1.5,
+                    (Math.random() - 0.5) * 5
+                );
+                mesh.rotation.z = Math.PI; 
+                heartsGroup.add(mesh);
+                
+                particles.push({
+                    mesh: mesh,
+                    speed: 0.02 + Math.random() * 0.04,
+                    sway: Math.random() * 0.1,
+                    swayOffset: Math.random() * Math.PI * 2,
+                    initialY: mesh.position.y
+                });
+            }
+        }
+
+        // --- 4. BALLOONS (For Final Scene) ---
+        const balloonsGroup = new THREE.Group();
+        scene.add(balloonsGroup);
+        const balloons = [];
+
+        // Reuse heart shape but make it 3D by extruding
+        const balloonGeo = new THREE.ExtrudeGeometry(heartShape, { depth: 0.4, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.1, bevelSegments: 5 });
+        // Center geometry
+        balloonGeo.center();
+
+        function spawnBalloons() {
+            for(let i=0; i<15; i++) {
+                const color = new THREE.Color().setHSL(Math.random() * 0.1 + 0.95, 1, 0.6); // Reds and pinks
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: color, 
+                    roughness: 0.3,
+                    metalness: 0.2,
+                    emissive: color,
+                    emissiveIntensity: 0.2
+                });
+                const mesh = new THREE.Mesh(balloonGeo, mat);
+                
+                // Start below floor, spread out
+                const x = (Math.random() - 0.5) * 20;
+                const z = (Math.random() - 0.5) * 20 - 10; // Further back
+                const y = -5 - Math.random() * 10;
+
+                mesh.position.set(x, y, z);
+                mesh.scale.set(0.8, 0.8, 0.8);
+                mesh.rotation.z = Math.PI; // Pointy end down
+                
+                balloonsGroup.add(mesh);
+                
+                // String for balloon
+                const stringGeo = new THREE.CylinderGeometry(0.01, 0.01, 3);
+                const stringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+                const string = new THREE.Mesh(stringGeo, stringMat);
+                string.position.y = -1.8;
+                mesh.add(string);
+
+                balloons.push({
+                    mesh: mesh,
+                    speed: 0.01 + Math.random() * 0.02,
+                    sway: Math.random() * 0.05,
+                    swayOffset: Math.random() * Math.PI * 2,
+                    initialX: x
+                });
+            }
+        }
+
+
+        // --- INTERACTION ---
+
+        function startExperience() {
+            const music = document.getElementById('bg-music');
+            music.volume = 0.5;
+            music.play().catch(e=>console.log("Audio blocked"));
+            
+            document.getElementById('step-1').classList.add('hidden');
+            
+            roseModel.visible = true;
+            roseModel.scale.set(0,0,0);
+            
+            // Animate entire rose growing from ground
+            gsap.to(roseModel.scale, { x:1, y:1, z:1, duration: 2.5, ease: "elastic.out(1, 0.7)" });
+            
+            setTimeout(() => {
+                document.getElementById('step-2').classList.remove('hidden');
+            }, 2000);
+        }
+
+        function growRose() {
+            document.getElementById('step-2').classList.add('hidden');
+            
+            // Animate Petals Opening
+            petalLayers.forEach(p => {
+                if (p.type === 'outer') {
+                    // Open wide
+                    gsap.to(p.mesh.rotation, { x: 1.0, duration: 3, delay: p.delay, ease: "power2.out" });
+                } else if (p.type === 'mid') {
+                    // Open partially
+                    gsap.to(p.mesh.rotation, { x: 0.6, duration: 3, delay: p.delay, ease: "power2.out" });
+                }
+            });
+
+            // Brighten color to simulate blooming vibrancy
+            // We need to access material of one of the petals (they share material)
+            // Just traversing to find one
+            flowerHeadGroup.children[0].children[0].children[0].material.color.setHex(0xd90429); // Bright red
+
+            // Change light color to be warmer as it blooms
+            gsap.to(spotLight.color, { r:1, g:0.9, b:0.9, duration: 3 });
+
+            setTimeout(() => {
+                document.getElementById('step-3').classList.remove('hidden');
+            }, 2500);
+        }
+
+        function addMagic() {
+            document.getElementById('step-3').classList.add('hidden');
+            spawnHearts();
+            
+            // Add magical point light glow to rose
+            const glow = new THREE.PointLight(0xff006e, 1.5, 8);
+            glow.position.set(0, 4, 0);
+            roseModel.add(glow);
+            
+            gsap.from(glow, { intensity: 0, duration: 1.5 });
+
+            setTimeout(() => {
+                document.getElementById('step-4').classList.remove('hidden');
+            }, 1500);
+        }
+
+        function revealMessage() {
+            document.getElementById('step-4').classList.add('hidden');
+            
+            const final = document.getElementById('final-screen');
+            final.classList.remove('hidden');
+            
+            const card = document.getElementById('card-content');
+            card.style.display = 'block';
+            
+            gsap.to(card, {
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                duration: 1,
+                ease: "back.out(1.5)"
+            });
+
+            // Camera move to frame the rose better with the card
+            const finalY = window.innerWidth < window.innerHeight ? 5 : 4;
+            const finalZ = window.innerWidth < window.innerHeight ? 13 : 10;
+
+            gsap.to(camera.position, { y: finalY, z: finalZ, duration: 2.5, ease: "power2.inOut" });
+            gsap.to(camera.rotation, { x: -0.1, duration: 2.5, ease: "power2.inOut" });
+
+            // Trigger balloon animation
+            spawnBalloons();
+        }
+
+        function shareExperience() {
+            const shareData = {
+                title: 'Happy Rose Day',
+                text: 'A beautiful virtual rose for you! 🌹✨',
+                url: window.location.href
+            };
+            if(navigator.share) {
+                navigator.share(shareData).catch(err => console.log('Share failed', err));
+            } else {
+                navigator.clipboard.writeText(window.location.href);
+                alert("Link copied to clipboard! Send it to your love.");
+            }
+        }
+
+        // --- ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            const time = Date.now();
+            
+            // Gentle rotation of the model
+            if(roseModel.visible) {
+                roseModel.rotation.y += 0.003;
+            }
+
+            // Particles animation
+            particles.forEach(p => {
+                p.mesh.position.y += p.speed;
+                p.mesh.position.x += Math.sin(time * 0.002 + p.swayOffset) * 0.005;
+                p.mesh.rotation.y += 0.02;
+                p.mesh.rotation.z += 0.01;
+                
+                // Reset if too high
+                if(p.mesh.position.y > 7) {
+                    p.mesh.position.y = -1.5;
+                    p.mesh.material.opacity = 0;
+                } else {
+                    // Fade in/out logic
+                    if(p.mesh.position.y < 0) p.mesh.material.opacity = Math.min(1, p.mesh.material.opacity + 0.02);
+                    if(p.mesh.position.y > 5) p.mesh.material.opacity = Math.max(0, p.mesh.material.opacity - 0.02);
+                }
+            });
+
+            // Balloons Animation
+            balloons.forEach(b => {
+                b.mesh.position.y += b.speed;
+                b.mesh.position.x = b.initialX + Math.sin(time * 0.001 + b.swayOffset) * b.sway * 10;
+                b.mesh.rotation.y = Math.sin(time * 0.002 + b.swayOffset) * 0.2;
+
+                // Reset if too high
+                if(b.mesh.position.y > 20) {
+                    b.mesh.position.y = -10;
+                    b.mesh.position.x = (Math.random() - 0.5) * 20;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // Handle Window Resize & Orientation Change
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Adjust camera position based on new orientation if not yet revealed
+            if(!document.getElementById('final-screen').classList.contains('hidden')) {
+                 // final position is already set
+            } else {
+                setInitialCamera();
+            }
+        });
+
+        animate();
+
+    </script>
+</body>
+</html>
